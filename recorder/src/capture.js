@@ -1,0 +1,9 @@
+'use strict';
+const cp=require('child_process'),EventEmitter=require('events'),unpack=require('./mpegts').unpack;
+class Capture extends EventEmitter{
+ constructor(binary){super();this.binary=binary;this.child=null;this.pending=Buffer.alloc(0);this.magic=false;this.restarts=0;this.lastFrameAt=0;this.startedAt=Date.now();}
+ start(){if(this.child)return;const c=cp.spawn('/lib/ld-linux-x86-64.so.2',[this.binary,'--seconds','86400'],{stdio:['pipe','pipe','pipe']});this.child=c;this.startedAt=Date.now();this.lastFrameAt=0;this.pending=Buffer.alloc(0);this.magic=false;this.closed=new Promise(resolve=>c.on('close',(code,signal)=>{clearInterval(this.credit);this.child=null;this.emit('closed',{code,signal});resolve();}));c.stdin.on('error',()=>{});c.on('error',e=>this.emit('fault',e));c.stderr.on('data',b=>this.emit('diagnostic',b.toString()));c.stdout.on('data',b=>{try{this.feed(b);}catch(e){this.emit('fault',e);c.kill('SIGTERM');}});this.credit=setInterval(()=>{if(c.stdin.writable)c.stdin.write('C');},150);c.stdin.write('C');}
+ feed(b){if(this.pending.length+b.length>2*1048576+65568)throw Error('Capture input bound');this.pending=Buffer.concat([this.pending,b]);if(!this.magic){if(this.pending.length<8)return;if(this.pending.slice(0,8).toString('hex')!=='5253454155320000')throw Error('Capture magic');this.pending=this.pending.slice(8);this.magic=true;}while(this.pending.length>=32){const n=this.pending.readUInt32LE(0);if(n<17||n>2*1048576)throw Error('Capture AU size');if(this.pending.length<32+n)return;const raw=this.pending.slice(0,32+n);this.pending=this.pending.slice(32+n);const mono=(raw.readUInt32LE(16)+raw.readUInt32LE(20)*4294967296)/1e6;this.lastFrameAt=Date.now();this.emit('frame',{mono,data:unpack(raw),raw});}}
+ async stop(){if(!this.child)return;this.child.stdin.end('X');this.child.kill('SIGTERM');await Promise.race([this.closed,new Promise(r=>setTimeout(r,1500))]);if(this.child)this.child.kill('SIGKILL');}
+}
+module.exports={Capture};

@@ -1,0 +1,9 @@
+Canvas/record/font runtime derived from the MIT kit at
+https://github.com/cauliflowermossgrape/idrive7-apps @ f277cc9.
+See LICENSE for the original copyright and permission notice.
+
+canvas.js and record.js include the existing generic image primitives.
+fonts.js reads the atlas format. fonts/*.json in THIS project are generated
+from NotoSans-Regular.ttf, not BMW font data. The font is distributed under
+SIL Open Font License 1.1; see runtime/OFL.txt and bake_fonts.py.
+No BMW SDK or BMW font files are included in these assets.

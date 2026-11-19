@@ -1,0 +1,4 @@
+'use strict';
+const cp=require('child_process');
+function ensure(o){o=o||{};const run=o.run||((args,input)=>cp.execFileSync('nft',args,{encoding:'utf8',input,timeout:2000})),text=run(['list','chain','ip','filter','highprioinput']),lines=text.split('\n').filter(s=>/comment "owner-(rse-camera-service-v1|dvr-rse-remote-v2)"/.test(s));if(lines.length){if(!lines.every(s=>s.indexOf('vlan73')>=0&&s.indexOf('160.48.199.118')>=0&&s.indexOf('160.48.199.119')>=0&&/tcp dport 23464\b/.test(s)&&/\baccept\b/.test(s)))throw Error('Unexpected owned camera network rule');return {existing:true};}run(['-f','-'],'add rule ip filter highprioinput iifname "vlan73" ip saddr 160.48.199.118 ip daddr 160.48.199.119 tcp dport 23464 accept comment "owner-dvr-rse-remote-v2"\n');return {added:true};}
+module.exports={ensure};

@@ -1,0 +1,10 @@
+'use strict';
+const SAME=(a,b)=>!!(a&&b&&a.application===b.application&&a.mode===b.mode&&a.perspective===b.perspective);
+const REQUEST={application:'TOPREARVIEW',mode:'FIXED_CAMERA',perspective:1};
+function scene(a,b,ready){if(ready!=='CAMERA_READY'||!SAME(a,b))return null;if(a.application==='TOPREARVIEW'&&a.perspective!==255)return {id:SAME(a,REQUEST)?1:3,label:SAME(a,REQUEST)?'Передняя камера':'Штатный обзор'};if(a.application==='SIDEVIEW'&&a.perspective===0){if(a.mode==='SIDEVIEW_FRONT')return {id:4,label:'Передняя панорама'};if(a.mode==='SIDEVIEW_REAR')return {id:5,label:'Задняя панорама'};}return null;}
+function ignition(v,power){if(!v){if(power==='FULL_ON_USER_ON'||power===99)return true;if(power==='ENTERTAINMENT_MODE_USER_ON'||power===100)return false;return null;}const q=v.qualifierStatusConditionVehicle;if(q!=='SIGNALWERT_GUELTIG'&&q!==2)return null;const s=v.statusConditionVehicle;if(['FAHRBEREITSCHAFT_HERSTELLEN','FAHREN',8,10].indexOf(s)>=0)return true;if(s==='PRUEFEN_ANALYSE_DIAGNOSE'||s===7){if(power==='FULL_ON_USER_ON'||power===99)return true;if(power==='ENTERTAINMENT_MODE_USER_ON'||power===100)return false;return null;}if(['PARKEN_BN_IO','PARKEN_BN_NIO','STANDFUNKTIONEN_KUNDE_NICHT_IM_FZG','WOHNEN','FAHRBEREITSCHAFT_BEENDEN',1,2,3,5,12].indexOf(s)>=0)return false;return null;}
+function shouldRecord(settings,state,now){return state.ignition===true&&state.vehicleAvailable===true;}
+function speed(v){const n=v&&v.speedVehicleCentreOfGravity;return Number.isInteger(n)&&n>=0&&n<65535?n:null;}
+function defaults(){return {recordMode:'ignition',privacy:false,exportSpeed:true,archiveSizeGiB:4};}
+function settings(v){if(!v||typeof v.exportSpeed!=='boolean'||v.privacy!==undefined&&typeof v.privacy!=='boolean')throw Error('Invalid recorder settings');const size=v.archiveSizeGiB===undefined?4:v.archiveSizeGiB;if([2,4,8,16].indexOf(size)<0)throw Error('Invalid archive size');return {recordMode:'ignition',privacy:v.privacy===true,exportSpeed:v.exportSpeed,archiveSizeGiB:size};}
+module.exports={scene,ignition,shouldRecord,speed,defaults,settings,REQUEST,SAME};

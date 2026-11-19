@@ -1,0 +1,5 @@
+'use strict';
+// The supervised parent stays resident across worker repairs and settings changes.
+const cp=require('child_process'),path=require('path'),fs=require('fs');let worker=null,stopping=false;
+function start(){if(stopping||worker)return;const support=require('./capabilities').inspect();if(!support.supported){if(!start.warned){process.stderr.write(JSON.stringify({event:'UNSUPPORTED_TARGET',errors:support.errors})+'\n');start.warned=true;}setTimeout(start,30000);return;}start.warned=false;const current=fs.realpathSync('/var/opt/owner-dvr/current');worker=cp.spawn(path.join(current,'native/dvr-io'),['lockrun','/var/opt/owner-dvr/record.lock','/usr/bin/node',path.join(current,'src/service.js')],{stdio:['ignore','ignore','inherit']});worker.on('error',e=>process.stderr.write(e.message+'\n'));worker.on('close',()=>{worker=null;if(stopping)process.exit(0);setTimeout(start,2000);});}
+process.on('SIGTERM',()=>{stopping=true;if(!worker)return process.exit(0);const c=worker;c.kill('SIGTERM');setTimeout(()=>{if(worker===c)c.kill('SIGKILL');},10000);});start();

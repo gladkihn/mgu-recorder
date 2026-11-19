@@ -1,0 +1,9 @@
+'use strict';
+const crypto=require('crypto'),fs=require('fs'),path=require('path');
+class Trips{
+ constructor(ring,now,file){this.file=file;this.used=new Set(ring.slots.filter(Boolean).map(s=>s.tripId||0));const latest=ring.slots.filter(s=>s&&s.frames).sort((a,b)=>b.generation-a.generation)[0];this.id=latest&&latest.tripId&&(now||Date.now())>=latest.lastWall&&(now||Date.now())-latest.lastWall<300000?latest.tripId:0;this.lastIgnition=undefined;this.pending=false;if(file){try{const v=JSON.parse(fs.readFileSync(file));if(typeof v.lastIgnition==='boolean')this.lastIgnition=v.lastIgnition;if(v.id!==this.id)this.id=0;this.pending=v.pending===true;}catch(e){if(e.code!=='ENOENT')this.persistError=e.message;}}}
+ persist(){if(!this.file)return;try{const tmp=this.file+'.new',fd=fs.openSync(tmp,fs.constants.O_WRONLY|fs.constants.O_CREAT|(fs.constants.O_NOFOLLOW||0),0o600);try{const s=fs.fstatSync(fd);if(!s.isFile()||s.nlink!==1)throw Error('Unsafe trip state file');fs.ftruncateSync(fd,0);fs.writeSync(fd,Buffer.from(JSON.stringify({id:this.id,lastIgnition:this.lastIgnition,pending:this.pending})+'\n'));fs.fsyncSync(fd);}finally{fs.closeSync(fd);}fs.renameSync(tmp,this.file);if(process.platform!=='win32'){const d=fs.openSync(path.dirname(this.file),'r');try{fs.fsyncSync(d);}finally{fs.closeSync(d);}}this.persistError=null;}catch(e){this.persistError=e.message;}}
+ observe(state){if(typeof state.ignition!=='boolean'||state.ignition===this.lastIgnition)return;if(state.ignition===true&&this.lastIgnition===false)this.pending=true;this.lastIgnition=state.ignition;this.persist();}
+ current(state){this.observe(state);if(!this.id||this.pending&&state.ignition===true){let id;do{id=crypto.randomBytes(4).readUInt32LE(0);}while(!id||this.used.has(id));this.id=id;this.used.add(id);this.pending=false;this.persist();}return this.id;}
+}
+module.exports={Trips};

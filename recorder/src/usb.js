@@ -1,0 +1,9 @@
+'use strict';
+const fs=require('fs'),path=require('path'),cp=require('child_process');
+const unescape=s=>s.replace(/\\([0-7]{3})/g,(m,n)=>String.fromCharCode(parseInt(n,8)));
+function discover(o){o=o||{};const mounts=o.mounts||fs.readFileSync('/proc/self/mountinfo','utf8'),real=o.realpath||fs.realpathSync;const result=[];for(const row of mounts.trim().split('\n')){const a=row.split(' '),sep=a.indexOf('-');if(sep<6)continue;const point=unescape(a[4]),source=unescape(a[sep+2]||''),dev=a[2];if(!/^\d+:\d+$/.test(dev)||!source.startsWith('/dev/'))continue;let sys;try{sys=real('/sys/dev/block/'+dev);}catch(e){continue;}if(!/\/usb\d+\//.test(sys))continue;if(result.some(v=>v.device===dev))continue;result.push({id:dev,device:dev,path:point,source,readOnly:a[5].split(',').indexOf('ro')>=0,label:path.basename(point)});}return result;}
+function free(p){const text=cp.execFileSync('df',['-Pk',p],{encoding:'utf8',timeout:2000}).trim().split('\n').pop().trim().split(/\s+/);if(text.length<6||!/^\d+$/.test(text[3]))throw Error('USB free space unavailable');return Number(text[3])*1024;}
+function selected(id){const v=discover().find(v=>v.id===id);if(!v)throw Error('USB drive removed');if(!fs.lstatSync(v.path).isDirectory())throw Error('Unsafe USB mount');return v;}
+function remount(v,ro){selected(v.id);cp.execFileSync('/bin/mount',['-o','remount,'+(ro?'ro':'rw'),v.path],{timeout:5000});}
+function refresh(v,file,inode){return new Promise((resolve,reject)=>{const request={id:v.id,source:v.source,path:v.path,file,inode};cp.execFile(process.execPath,[path.join(__dirname,'usb-refresh.js'),JSON.stringify(request)],{maxBuffer:16384},(error,stdout,stderr)=>{if(error)return reject(Error((stderr||error.message).trim()));try{resolve(JSON.parse(stdout));}catch(e){reject(Error('USB refresh result unavailable'));}});});}
+module.exports={discover,free,selected,remount,refresh};

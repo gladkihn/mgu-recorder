@@ -1,0 +1,17 @@
+'use strict';
+const assert=require('assert'),fs=require('fs'),path=require('path'),vm=require('vm'),EventEmitter=require('events'),{Guidelines}=require('../src/guidelines'),{ParkingGuard}=require('../src/parking-guard');
+const idle={hmiRequest:0,hmiVisibilityRequest:0,parkmenuRequest:0},active={hmiRequest:1,hmiVisibilityRequest:1,parkmenuRequest:1};
+const flush=async()=>{for(let i=0;i<8;i++)await new Promise(r=>setImmediate(r));};
+async function run(mode){let time=0,line='ON',saved=null,exit=null,onPark;const writes=[],timers=[],messages=[],proc=new EventEmitter();proc.connected=true;proc.send=(m,cb)=>{messages.push(m);if(cb)cb();};proc.stderr=new EventEmitter();proc.hrtime=()=>[Math.floor(time/1000),(time%1000)*1e6];proc.exit=code=>exit=code;
+ class J{load(){return saved;}save(original){saved={schema:2,original};}clear(){saved=null;}}
+ class O{snapshot(){return {stable:true,attached:1,clients:[{cookie:7,type:'CLIENT_INDIRECT'}],lastRequestWasIndirect:1,nativeCurrent:{application:1,mode:1,perspective:1}};}}
+ class G extends ParkingGuard{constructor(){super({now:()=>time});}}
+ const common={init:async()=>{},waitUntilAvailable:async()=>{},shutdown:async()=>{}};
+ const xv=Object.assign({},common,{getValue:async()=>line,setValue:async(n,v)=>{assert.equal(n,'Trajectories');line=v;writes.push(v);}}),park=Object.assign({},common,{subscribeToAvailability:async()=>{},subscribe:async o=>{onPark=o.onReceive;onPark(idle);}});
+ class S extends EventEmitter{async start(){onPark=v=>this.emit('state',{known:true,active:v===active});this.emit('state',{known:true,active:false});return this;}stop(){}}
+ const req=n=>{if(n==='./surface-watch')return {SurfaceWatch:S};if(n==='fs')return {readFileSync:()=> '{}'};if(n==='path')return path;if(n==='./guidelines')return {Guidelines,Journal:J};if(n==='./camera-ownership')return {Ownership:O};if(n==='./parking-guard')return {ParkingGuard:G};if(n==='./catalog')return {select:(raw,name)=>({name})};if(n.endsWith('someip.node'))return {buildProxy:async c=>c.name.indexOf('XView3D')>=0?xv:park};throw Error(n);};
+ const context={require:req,process:proc,setInterval:fn=>{timers.push(fn);return timers.length;},clearInterval:()=>{},setTimeout,clearTimeout,setImmediate,console};vm.createContext(context);vm.runInContext(fs.readFileSync(path.join(__dirname,'../src/guidelines-host.js'),'utf8'),context);await flush();assert(messages.some(m=>m.type==='ready'));time=800;proc.emit('message',{op:'lease',cookie:7,ready:true});await flush();assert.equal(line,'OFF');assert(saved);
+ if(mode==='disconnect'){proc.connected=false;proc.emit('disconnect');await flush();assert.equal(exit,0);}else if(mode==='heartbeat'){time=1900;await timers[0]();await flush();}else{onPark(active);await flush();}
+ assert.equal(line,'ON');assert.equal(saved,null);assert.deepStrictEqual(writes,['OFF','ON']);if(exit===null){proc.emit('SIGTERM');await flush();}
+}
+(async()=>{for(const mode of ['disconnect','heartbeat','parkmenu'])await run(mode);const r={status:'PASS',nativeCallsMocked:true,checks:['parent IPC disconnect restores lines independently','missing heartbeat restores without parent cooperation','independent native camera visibility watcher restores lines','only one OFF and one ON; durable journal cleared after getter confirmation']};fs.writeFileSync(path.join(__dirname,'GUIDELINES-WATCHDOG-RESULT.json'),JSON.stringify(r,null,2));console.log(JSON.stringify(r));})().catch(e=>{console.error(e.stack);process.exitCode=1;});
