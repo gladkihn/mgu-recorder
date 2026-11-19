@@ -36,7 +36,7 @@ unpack x264 x264-stable.tar.gz
 ./configure --prefix="$prefix" --libdir="$prefix/lib" --enable-static --disable-cli --enable-pic --bit-depth=8 --chroma-format=420
 make -j"$jobs" && make install
 unpack ffmpeg ffmpeg-7.1.5.tar.xz
-./configure --prefix="$prefix" --pkg-config-flags=--static --extra-cflags="-I$prefix/include $CFLAGS" --extra-ldflags="$LDFLAGS" --extra-libs='-lstdc++ -lpthread -lm' --enable-gpl --enable-version3 --enable-static --disable-shared --disable-debug --disable-doc --disable-autodetect --disable-network --disable-everything --enable-ffmpeg --disable-ffplay --disable-ffprobe --enable-libx264 --enable-libass --enable-swscale --enable-protocol=file,pipe --enable-demuxer=mpegts,h264,rawvideo,mov --enable-muxer=rawvideo,mp4,mpegts,h264 --enable-decoder=h264,rawvideo --enable-encoder=libx264,rawvideo --enable-parser=h264 --enable-bsf=h264_mp4toannexb,extract_extradata --enable-filter=buffer,buffersink,scale,format,null,fps,tpad,ass
+./configure --prefix="$prefix" --pkg-config-flags=--static --extra-cflags="-I$prefix/include $CFLAGS" --extra-ldflags="$LDFLAGS" --extra-libs='-Wl,-Bstatic -lstdc++ -Wl,-Bdynamic -lpthread -lm' --enable-gpl --enable-version3 --enable-static --disable-shared --disable-debug --disable-doc --disable-autodetect --disable-network --disable-everything --enable-ffmpeg --disable-ffplay --disable-ffprobe --enable-libx264 --enable-libass --enable-swscale --enable-protocol=file,pipe --enable-demuxer=mpegts,h264,rawvideo,mov --enable-muxer=rawvideo,mp4,mpegts,h264 --enable-decoder=h264,rawvideo --enable-encoder=libx264,rawvideo --enable-parser=h264 --enable-bsf=h264_mp4toannexb,extract_extradata --enable-filter=buffer,buffersink,scale,format,null,fps,tpad,ass
 make -j"$jobs"
 install -m755 ffmpeg "$repo_root/recorder/runtime/ffmpeg"
 ./ffmpeg -version > "$repo_root/recorder/runtime/FFMPEG-CONFIGURATION.txt"
@@ -47,7 +47,7 @@ cp "$build_root/src/libass/COPYING" "$repo_root/recorder/runtime/licenses/libass
 cp "$build_root/src/harfbuzz/COPYING" "$repo_root/recorder/runtime/licenses/harfbuzz.MIT"
 cp "$build_root/src/fribidi/COPYING" "$repo_root/recorder/runtime/licenses/fribidi.LGPL"
 cp "$build_root/src/freetype/docs/FTL.TXT" "$repo_root/recorder/runtime/licenses/freetype.FTL"
-cp "$build_root/src/freetype/docs/LICENSE.TXT" "$repo_root/recorder/runtime/licenses/freetype.LICENSE"
+cp "$build_root/src/freetype/LICENSE.TXT" "$repo_root/recorder/runtime/licenses/freetype.LICENSE"
 cc -O2 -march=x86-64 -std=gnu11 "$repo_root/recorder/native/dvr-io.c" -o "$repo_root/recorder/native/dvr-io"
 cc -O2 -march=x86-64 -std=gnu11 "$repo_root/recorder/native/observer.c" -o "$repo_root/recorder/native/observer" -ldl -pthread
 cc -O2 -march=x86-64 -std=gnu11 "$repo_root/recorder/native/mfx-codec.c" -o "$repo_root/recorder/native/mfx-codec" -ldl
