@@ -12,10 +12,10 @@
     {
       "id": "freetype",
       "version": "2.13.3",
-      "url": "https://github.com/freetype/freetype/archive/refs/tags/VER-2-13-3.tar.gz",
-      "file": "VER-2-13-3.tar.gz",
-      "bytes": 2482495,
-      "sha256": "bc5c898e4756d373e0d991bab053036c5eb2aa7c0d5c67e8662ddc6da40c4103"
+      "url": "https://download-mirror.savannah.gnu.org/releases/freetype/freetype-2.13.3.tar.xz",
+      "file": "freetype-2.13.3.tar.xz",
+      "bytes": 2617564,
+      "sha256": "0550350666d427c74daeb85d5ac7bb353acba5f76956395995311a9c6f063289"
     },
     {
       "id": "fribidi",

@@ -20,8 +20,7 @@ unpack(){
 unpack nasm nasm-2.16.03.tar.xz
 ./configure --prefix="$prefix"
 make -j"$jobs" && make install
-unpack freetype VER-2-13-3.tar.gz
-./autogen.sh
+unpack freetype freetype-2.13.3.tar.xz
 ./configure --prefix="$prefix" --enable-static --disable-shared --without-zlib --without-bzip2 --without-png --without-brotli --without-harfbuzz
 make -j"$jobs" && make install
 unpack fribidi fribidi-1.0.16.tar.xz
@@ -31,7 +30,7 @@ unpack harfbuzz harfbuzz-10.4.0.tar.xz
 meson setup out --prefix="$prefix" --libdir=lib --default-library=static --buildtype=release -Dglib=disabled -Dgobject=disabled -Dcairo=disabled -Dchafa=disabled -Dicu=disabled -Dgraphite2=disabled -Dfreetype=enabled -Ddocs=disabled -Dtests=disabled -Dintrospection=disabled -Dutilities=disabled
 meson compile -C out -j"$jobs" && meson install -C out
 unpack libass libass-0.17.3.tar.xz
-./configure --prefix="$prefix" --enable-static --disable-shared --disable-fontconfig --disable-require-system-font-provider
+./configure --prefix="$prefix" --enable-static --disable-shared --disable-fontconfig --disable-libunibreak --disable-require-system-font-provider
 make -j"$jobs" && make install
 unpack x264 x264-stable.tar.gz
 ./configure --prefix="$prefix" --libdir="$prefix/lib" --enable-static --disable-cli --enable-pic --bit-depth=8 --chroma-format=420
