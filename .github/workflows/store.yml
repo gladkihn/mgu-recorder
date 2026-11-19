@@ -1,8 +1,14 @@
 name: Store packages
 on:
   workflow_dispatch:
+    inputs:
+      artifact_run:
+        type: string
+        required: false
+        default: ''
 permissions:
   contents: read
+  actions: read
 jobs:
   build:
     runs-on: ubuntu-22.04
@@ -10,14 +16,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build for MGU glibc 2.17
+        if: inputs.artifact_run == ''
         run: |
           docker pull quay.io/pypa/manylinux2014_x86_64:latest
           mkdir -p dist
           docker image inspect quay.io/pypa/manylinux2014_x86_64:latest --format '{{index .RepoDigests 0}}' > dist/build-image.txt
           docker run --rm -v "$PWD:/work" -w /work quay.io/pypa/manylinux2014_x86_64:latest bash build/ffmpeg.sh
-      - name: Verify codec and build Store artifacts
+      - uses: actions/download-artifact@v4
+        if: inputs.artifact_run != ''
+        with:
+          name: mgu-store
+          run-id: ${{ inputs.artifact_run }}
+          github-token: ${{ github.token }}
+          path: dist
+      - name: Restore built runtime for verification
+        if: inputs.artifact_run != ''
+        run: tar -xzf dist/owner-dvr@4.2.0.tgz -C recorder --strip-components=1 files/native files/runtime
+      - name: Verify codec
         run: |
           python3 build/verify_runtime.py
+      - name: Build Store artifacts
+        if: inputs.artifact_run == ''
+        run: |
           python3 build/release.py
       - uses: actions/upload-artifact@v4
         with:

@@ -13,8 +13,10 @@ for binary in [F]+[R/'recorder/native'/name for name in ['dvr-io','observer','mf
 checks.append('All ELF x86_64 helpers and FFmpeg require glibc <= 2.17 and only system runtime libraries')
 with tempfile.TemporaryDirectory()as tmp:
     p=Path(tmp);w,h=1280,480;frame=bytes([48])*(w*h)+bytes([128])*(w*h//2)
-    args=['-hide_banner','-loglevel','error','-f','rawvideo','-pixel_format','yuv420p','-video_size','1280x480','-framerate','25','-i','pipe:0','-an','-c:v','libx264','-threads','1','-preset','ultrafast','-g','1','-pix_fmt','yuv420p','-f','mpegts',str(p/'input.ts')]
-    run(args,input=frame*50)
+    args=['-hide_banner','-loglevel','error','-f','rawvideo','-pixel_format','yuv420p','-video_size','1280x480','-framerate','25','-i','pipe:0','-an','-c:v','libx264','-threads','1','-preset','ultrafast','-g','1','-pix_fmt','yuv420p','-frames:v','1','-f','h264',str(p/'frame.h264')]
+    run(args,input=frame)
+    mux="const fs=require('fs'),M=require(process.argv[1]),m=new M.Mux(),b=fs.readFileSync(process.argv[2]),f=fs.openSync(process.argv[3],'wx');for(let i=0;i<50;i++)fs.writeSync(f,m.frame(b,90000+i*3600));fs.closeSync(f);"
+    subprocess.run(['node','-e',mux,str(R/'recorder/src/mpegts.js'),str(p/'frame.h264'),str(p/'input.ts')],check=True)
     (p/'stamp.ass').write_text('''[Script Info]
 ScriptType: v4.00+
 PlayResX: 1280
@@ -37,6 +39,6 @@ Dialogue: 0,0:00:00.00,0:01:00.00,Default,,0,0,0,,2026-11-19 12:34:56 70
     checks.append('USB export: H.264 Main/yuv420p MP4 mp42 + faststart, 60 seconds, 1500 frames; ASS timestamp/speed rendered with Noto')
     raw=run(['-hide_banner','-loglevel','error','-threads','1','-probesize','65536','-analyzeduration','0','-f','mpegts','-i',str(p/'input.ts'),'-an','-vf','scale=1280:480:flags=fast_bilinear','-threads','1','-pix_fmt','yuv420p','-vsync','0','-f','rawvideo','pipe:1']).stdout
     assert len(raw)==len(frame)*50
-    checks.append('Existing preview MPEG-TS to rawvideo command decodes all 50 frames')
+    checks.append('Recorder native MPEG-TS mux and existing preview command decode all 50 frames')
 (D/'runtime-test.json').write_text(json.dumps({'status':'PASS','checks':checks,'vehicleTested':False},indent=2)+'\n')
 print('\n'.join(checks))
