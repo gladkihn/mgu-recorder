@@ -1,21 +1,14 @@
-# Build products, credentials and local verification data
+.build/
+dist/
+recorder/test/
 **/__pycache__/
-**/dist/
-**/evidence/
-**/live/
-**/payload/
-**/lib/
-**/vendor/packages/
-**/vendor/*.tgz
-**/test/*-RESULT.json
-**/test/core-*/
-**/test/privacy-*/
-**/test/screens/
 **/runtime/ffmpeg
+**/runtime/FFMPEG-SOURCE.json
+**/runtime/FFMPEG-CONFIGURATION.txt
+**/runtime/licenses/
 **/native/dvr-io
 **/native/observer
 **/native/mfx-codec
-build-inputs/
 *.log
 *.pem
 id_rsa*
