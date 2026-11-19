@@ -1,0 +1,50 @@
+{
+  "schema": 2,
+  "components": [
+    {
+      "id": "owner-dvr",
+      "kind": "tool",
+      "title": "Recorder Server",
+      "version": "4.2.0",
+      "artifact": {
+        "name": "owner-dvr@4.2.0.tgz",
+        "size": 3218304,
+        "sha256": "47efbe016a2b05ef84dffe9327ea2c5718a52f4e39e08aec1092f8d9bde44445",
+        "url": "https://github.com/gladkihn/mgu-recorder/releases/download/catalog/owner-dvr@4.2.0.tgz"
+      },
+      "requires": {
+        "mgu-deploy": "0.8.11"
+      },
+      "optional": true,
+      "uninstallable": true,
+      "mguHmi": [
+        "ID7"
+      ]
+    },
+    {
+      "id": "owner_dvr",
+      "kind": "app",
+      "title": "Recorder",
+      "version": "1.5.2",
+      "artifact": {
+        "name": "owner_dvr@1.5.2.tgz",
+        "size": 993570,
+        "sha256": "377196731de7c160b7cdcf78c5876cb647c1854719c0003ad48588184d5fb499",
+        "url": "https://github.com/gladkihn/mgu-recorder/releases/download/catalog/owner_dvr@1.5.2.tgz"
+      },
+      "requires": {
+        "owner-dvr": "4.2.0",
+        "mgu-render": "0.6.19",
+        "mgu-deploy": "0.8.11"
+      },
+      "optional": false,
+      "uninstallable": true,
+      "mguHmi": [
+        "ID7"
+      ],
+      "build": "unit",
+      "icon": "Recorder.png",
+      "iconSha256": "a927d8285c918a2ebdc96b508c7e9b6b263403ef59a672af8fd5a3000987a5f2"
+    }
+  ]
+}
