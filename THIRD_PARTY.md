@@ -4,7 +4,7 @@
 
 | Компонент | Версия/источник | Лицензия и исходники |
 |---|---|---|
-| mgu-store / mgu-deploy | mgu-deploy 0.8.16; upstream commit `fc79a75f07f364c69165dec830f2fa4553ff20e4` | GPL-3.0; исходники в отдельном архиве Store dependencies |
+| mgu-store / mgu-deploy | mgu-deploy 0.8.16 — supplied local source snapshot; upstream base commit `fc79a75f07f364c69165dec830f2fa4553ff20e4` contains deploy 0.8.11 | GPL-3.0; exact 0.8.16 bootstrap sources are in the separate Store dependencies archive |
 | mgu-render | 0.6.19; тот же checkout mgu-store | GPL-3.0, MIT-части и собственные notices; архив Store dependencies |
 | Canvas/record/font kit | idrive7-apps `f277cc9` | MIT; `recorder/ui/kit/LICENSE` и `SOURCE` |
 | Intel Media SDK headers | API1.35 | MIT-уведомления в каждом `recorder/native/intel/*.h` |
@@ -23,6 +23,6 @@ Upstream locations:
 - https://johnvansickle.com/ffmpeg/release-readme.txt
 - https://ffmpeg.org/releases/ffmpeg-7.0.2.tar.xz
 
-The bundled FFmpeg executable SHA256 is `e7e7fb30477f717e6f55f9180a70386c62677ef8a4d4d1a5d948f4098aa3eb99`. Its source package URL and wheel checksum are recorded in `FFMPEG-SOURCE.json`. The imageio wrapper license does not replace FFmpeg's GPL license. A full matching corresponding-source bundle for this prebuilt static FFmpeg and its linked libraries is not supplied by this source snapshot; the publication audit records that gap rather than claiming complete source coverage.
+The original local offline build used FFmpeg executable SHA256 `e7e7fb30477f717e6f55f9180a70386c62677ef8a4d4d1a5d948f4098aa3eb99`; it is not included in this public source snapshot. Its package URL and wheel checksum are recorded in `FFMPEG-SOURCE.json`. The imageio wrapper license does not replace FFmpeg's GPL license. A full matching corresponding-source bundle for that prebuilt static FFmpeg and its linked libraries is not supplied here; the binary installer is withheld from public release until that source gap is resolved.
 
 No BMW SDK, firmware, vehicle-owned libraries, keys or camera recordings are redistributed.
