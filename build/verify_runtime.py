@@ -1,5 +1,5 @@
 from pathlib import Path
-import subprocess,re,json,tempfile
+import subprocess,re,json,tempfile,os
 R=Path(__file__).resolve().parent.parent;F=R/'recorder/runtime/ffmpeg';D=R/'dist';D.mkdir(exist_ok=True)
 def run(args,**kwargs):return subprocess.run([str(F)]+args,check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,**kwargs)
 checks=[]
@@ -28,15 +28,18 @@ Style: Default,Noto Sans,28,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 Dialogue: 0,0:00:00.00,0:01:00.00,Default,,0,0,0,,2026-11-19 12:34:56 70
 ''')
-    args=['-hide_banner','-loglevel','error','-threads','1','-copyts','-start_at_zero','-fflags','+genpts','-f','mpegts','-i',str(p/'input.ts'),'-an','-t','60','-vf',f'scale=1280:480:flags=fast_bilinear,fps=25,tpad=stop_mode=clone:stop_duration=60,ass={p}/stamp.ass:fontsdir={R}/recorder/runtime','-r','25','-fps_mode','cfr','-c:v','libx264','-threads','1','-preset','ultrafast','-crf','20','-pix_fmt','yuv420p','-profile:v','main','-level:v','3.1','-maxrate','8M','-bufsize','16M','-metadata','creation_time=2026-11-19T12:34:56.000Z','-movflags','+faststart','-brand','mp42','-f','mp4',str(p/'export.mp4')]
-    run(args)
+    args=['-hide_banner','-loglevel','error','-threads','1','-copyts','-start_at_zero','-fflags','+genpts','-f','mpegts','-i',str(p/'input.ts'),'-an','-t','60','-vf',f'scale=1280:480:flags=fast_bilinear,fps=25,tpad=stop_mode=clone:stop_duration=60,ass={p}/stamp.ass:fontsdir={R}/recorder/runtime','-r','25','-fps_mode','cfr','-c:v','libx264','-threads','1','-preset','ultrafast','-crf','20','-pix_fmt','yuv420p','-profile:v','main','-level:v','3.1','-maxrate','8M','-bufsize','16M','-metadata','creation_time=2026-11-19T12:34:56.000Z','-movflags','+faststart','-brand','mp42','-progress','pipe:1','-fs',str(256*1048576),'-y','-f','mp4','/proc/self/fd/4']
+    fd=os.open(p/'export.mp4',os.O_RDWR|os.O_CREAT|os.O_EXCL,0o644)
+    if fd!=4:os.dup2(fd,4);os.close(fd)
+    try:subprocess.run([str(R/'recorder/native/dvr-io'),'low-priority','--',str(F)]+args,check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,pass_fds=(4,))
+    finally:os.close(4)
     data=(p/'export.mp4').read_bytes();assert b'ftypmp42' in data and data.index(b'moov')<data.index(b'mdat')
     child=subprocess.Popen([str(F),'-hide_banner','-loglevel','error','-threads','1','-i',str(p/'export.mp4'),'-an','-threads','1','-pix_fmt','yuv420p','-f','rawvideo','pipe:1'],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     first=child.stdout.read(len(frame));assert sum(v>180 for v in first[:w*h])>100,'ASS text/font did not render'
     count=len(first)
     while chunk:=child.stdout.read(1024*1024):count+=len(chunk)
     assert child.wait()==0,child.stderr.read().decode();assert count==len(frame)*1500,count
-    checks.append('USB export: H.264 Main/yuv420p MP4 mp42 + faststart, 60 seconds, 1500 frames; ASS timestamp/speed rendered with Noto')
+    checks.append('Production low-priority helper + FD4 export: H.264 Main/yuv420p MP4 mp42 + faststart, 60 seconds, 1500 frames; ASS timestamp/speed rendered with Noto')
     raw=run(['-hide_banner','-loglevel','error','-threads','1','-probesize','65536','-analyzeduration','0','-f','mpegts','-i',str(p/'input.ts'),'-an','-vf','scale=1280:480:flags=fast_bilinear','-threads','1','-pix_fmt','yuv420p','-vsync','0','-f','rawvideo','pipe:1']).stdout
     assert len(raw)==len(frame)*50
     checks.append('Recorder native MPEG-TS mux and existing preview command decode all 50 frames')

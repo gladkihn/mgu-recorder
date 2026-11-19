@@ -10,6 +10,14 @@ for name in ['dvr-io','observer','mfx-codec']:files['native/'+name]=(P/'native'/
 for f in (P/'runtime').rglob('*'):
     if f.is_file():files[f.relative_to(P).as_posix()]=f.read_bytes()
 files['LICENSE']=(R/'LICENSE').read_bytes()
+notices=set()
+for header in (P/'native/intel').glob('*.h'):
+    lines=[]
+    for line in header.read_text().splitlines():
+        if line.startswith('//') or not line.strip():lines.append(line)
+        else:break
+    if lines:notices.add('\n'.join(lines).strip())
+files['licenses/Intel-Media-SDK.txt']=('\n\n'.join(sorted(notices))+'\n').encode()
 source=json.loads(files['runtime/FFMPEG-SOURCE.json']);assert sha(files['runtime/ffmpeg'])==source['ffmpegSha256']
 component={'id':'owner-dvr','kind':'tool','version':CORE,'title':'Recorder Server','optional':True,'uninstallable':True,'mguHmi':['ID7'],'requires':{'mgu-deploy':'0.8.11'},'files':[{'path':name,'mode':'0755' if name in ['native/dvr-io','native/observer','native/mfx-codec','runtime/ffmpeg'] else '0644','sha256':sha(data)} for name,data in sorted(files.items())],'units':[{'name':'owner-dvr.service'}],'enable':[{'unit':'owner-dvr.service','target':'multi-user.target'}],'restart':['owner-dvr.service'],'keepRunning':True,'activate':['node','src/live-apply.js'],'deactivate':['node','src/unified-deactivate.js'],'recmgr':['owner-dvr'],'crashNames':['dvr-io','observer','ffmpeg','mfx-codec']}
 unit=b'''[Unit]
