@@ -5,12 +5,12 @@
       "id": "owner-dvr",
       "kind": "tool",
       "title": "Recorder Server",
-      "version": "4.2.0",
+      "version": "4.2.1",
       "artifact": {
-        "name": "owner-dvr@4.2.0.tgz",
-        "size": 3218304,
-        "sha256": "47efbe016a2b05ef84dffe9327ea2c5718a52f4e39e08aec1092f8d9bde44445",
-        "url": "https://github.com/gladkihn/mgu-recorder/releases/download/catalog/owner-dvr@4.2.0.tgz"
+        "name": "owner-dvr@4.2.1.tgz",
+        "size": 3218976,
+        "sha256": "65f37334eb0ab5fb98ecd34e7472e3a3d7d385746956403659a651b89a433e94",
+        "url": "https://github.com/gladkihn/mgu-recorder/releases/download/catalog/owner-dvr@4.2.1.tgz"
       },
       "requires": {
         "mgu-deploy": "0.8.11"

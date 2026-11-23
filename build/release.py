@@ -1,7 +1,7 @@
 from pathlib import Path
 import hashlib,io,json,tarfile,sys,shutil,subprocess
 R=Path(__file__).resolve().parent.parent;P=R/'recorder';D=R/'dist';D.mkdir(exist_ok=True)
-CORE='4.2.0';APP='1.5.2';BASE='https://github.com/gladkihn/mgu-recorder/releases/download/catalog/'
+CORE='4.2.1';APP='1.5.2';APP_MIN_CORE='4.2.0';BASE='https://github.com/gladkihn/mgu-recorder/releases/download/catalog/'
 def sha(data):return hashlib.sha256(data).hexdigest()
 def add(t,name,data,mode=0o644):
     member=tarfile.TarInfo(name);member.size=len(data);member.mode=mode;member.mtime=0;t.addfile(member,io.BytesIO(data))
@@ -38,10 +38,10 @@ with tarfile.open(core,'w:gz')as t:
     add(t,'component.json',json.dumps(component,indent=2).encode());add(t,'units/owner-dvr.service',unit)
     for name,data in sorted(files.items()):add(t,'files/'+name,data,0o755 if name in ['native/dvr-io','native/observer','native/mfx-codec','runtime/ffmpeg'] else 0o644)
 sys.path.insert(0,str(P));from build_app import build_app
-app=build_app(P,D,APP,CORE)
+app=build_app(P,D,APP,APP_MIN_CORE)
 icon=D/'Recorder.png';shutil.copyfile(P/'ui/icon.png',icon)
 entries=[]
-for target,kind,title,requires in [(core,'tool','Recorder Server',component['requires']),(app,'app','Recorder',{'owner-dvr':CORE,'mgu-render':'0.6.19','mgu-deploy':'0.8.11'})]:
+for target,kind,title,requires in [(core,'tool','Recorder Server',component['requires']),(app,'app','Recorder',{'owner-dvr':APP_MIN_CORE,'mgu-render':'0.6.19','mgu-deploy':'0.8.11'})]:
     data=target.read_bytes();entry={'id':'owner-dvr' if kind=='tool' else 'owner_dvr','kind':kind,'title':title,'version':CORE if kind=='tool' else APP,'artifact':{'name':target.name,'size':len(data),'sha256':sha(data),'url':BASE+target.name},'requires':requires,'optional':kind=='tool','uninstallable':True,'mguHmi':['ID7']}
     if kind=='app':entry.update(build='unit',icon='Recorder.png',iconSha256=sha(icon.read_bytes()))
     entries.append(entry)
