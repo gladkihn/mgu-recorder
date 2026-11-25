@@ -1,5 +1,5 @@
 'use strict';
-const fs=require('fs'),path=require('path'),{exclusive}=require('./camera-ownership');
+const fs=require('fs'),path=require('path'),{effectiveRequest}=require('./camera-ownership');
 const normalize=v=>v==='ON'||v===1?'ON':v==='OFF'||v===0?'OFF':null;
 const monotonic=()=>{const t=process.hrtime();return t[0]*1000+t[1]/1e6;};
 class Journal{
@@ -12,7 +12,7 @@ class Journal{
 class Guidelines{
  constructor(o){this.o=o;this.now=o.now||monotonic;this.cookie=null;this.owned=false;this.original=null;this.phase=null;this.quietSince=null;this.blockedCookie=null;this.retryAt=0;this.failures=0;this.lastVerified=0;this.state={mode:'waiting',error:null,restorationPending:false};}
  target(cookie){if(cookie!==this.cookie){this.blockedCookie=null;this.retryAt=0;this.failures=0;this.quietSince=null;this.cookie=cookie;if(this.owned)this.phase='restoring';}}
- eligible(){return Number.isInteger(this.cookie)&&this.o.allowed()&&exclusive(this.o.ownership(),this.cookie);}
+ eligible(){return Number.isInteger(this.cookie)&&this.o.allowed()&&effectiveRequest(this.o.ownership(),this.cookie);}
  async set(value){let failure=null;try{await this.o.write(value);}catch(e){failure=e;}const until=monotonic()+(this.o.confirmMs===undefined?750:this.o.confirmMs);do{try{if(normalize(await this.o.read())===value)return value;}catch(e){if(!failure)failure=e;}if(monotonic()>=until)break;await new Promise(r=>setTimeout(r,50));}while(true);throw failure||Error('Line setting was not confirmed');}
  async recover(){const saved=this.o.journal.load();if(!saved)return;this.original=normalize(saved.original);this.owned=true;this.phase='restoring';this.state.restorationPending=true;await this.restore();}
  async restore(){if(!this.owned){const saved=this.o.journal.load();if(saved){this.original=normalize(saved.original);this.owned=true;}}if(!this.owned){this.state.mode='waiting';return;}
