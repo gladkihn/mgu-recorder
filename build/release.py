@@ -1,7 +1,7 @@
 from pathlib import Path
 import hashlib,io,json,tarfile,sys,shutil,subprocess
 R=Path(__file__).resolve().parent.parent;P=R/'recorder';D=R/'dist';D.mkdir(exist_ok=True)
-CORE='4.2.1';APP='1.5.2';APP_MIN_CORE='4.2.0';BASE='https://github.com/gladkihn/mgu-recorder/releases/download/catalog/'
+CORE='4.2.2';APP='1.5.3';APP_MIN_CORE='4.2.2';BASE='https://github.com/gladkihn/mgu-recorder/releases/download/catalog/'
 def sha(data):return hashlib.sha256(data).hexdigest()
 def add(t,name,data,mode=0o644):
     member=tarfile.TarInfo(name);member.size=len(data);member.mode=mode;member.mtime=0;t.addfile(member,io.BytesIO(data))
