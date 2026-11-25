@@ -1,7 +1,7 @@
 from pathlib import Path
 import hashlib,io,json,tarfile,sys,shutil,subprocess
 R=Path(__file__).resolve().parent.parent;P=R/'recorder';D=R/'dist';D.mkdir(exist_ok=True)
-CORE='4.3.3';APP='1.5.7';APP_MIN_CORE='4.3.3';BASE='https://github.com/gladkihn/mgu-recorder/releases/download/catalog/'
+CORE='4.3.4';APP='1.5.8';APP_MIN_CORE='4.3.4';BASE='https://github.com/gladkihn/mgu-recorder/releases/download/catalog/'
 from retarget_elf import interpreter,TARGET,NAMES
 for name in NAMES:assert interpreter((P/name).read_bytes())[2]==TARGET,('Incorrect MGU ELF interpreter',name)
 def sha(data):return hashlib.sha256(data).hexdigest()
