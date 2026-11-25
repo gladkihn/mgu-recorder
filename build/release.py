@@ -1,7 +1,7 @@
 from pathlib import Path
 import hashlib,io,json,tarfile,sys,shutil,subprocess
 R=Path(__file__).resolve().parent.parent;P=R/'recorder';D=R/'dist';D.mkdir(exist_ok=True)
-CORE='4.3.4';APP='1.5.8';APP_MIN_CORE='4.3.4';BASE='https://github.com/gladkihn/mgu-recorder/releases/download/catalog/'
+CORE='4.3.4';APP='1.5.9';APP_MIN_CORE='4.3.4';BASE='https://github.com/gladkihn/mgu-recorder/releases/download/catalog/'
 from retarget_elf import interpreter,TARGET,NAMES
 for name in NAMES:assert interpreter((P/name).read_bytes())[2]==TARGET,('Incorrect MGU ELF interpreter',name)
 def sha(data):return hashlib.sha256(data).hexdigest()
@@ -36,9 +36,17 @@ TimeoutStopSec=12
 WantedBy=multi-user.target
 '''
 core=D/f'owner-dvr@{CORE}.tgz'
-with tarfile.open(core,'w:gz')as t:
-    add(t,'component.json',json.dumps(component,indent=2).encode());add(t,'units/owner-dvr.service',unit)
-    for name,data in sorted(files.items()):add(t,'files/'+name,data,0o755 if name in ['native/dvr-io','native/observer','native/mfx-codec','runtime/ffmpeg'] else 0o644)
+if core.exists():
+    # Published versions are immutable; a UI-only release retains the exact server asset.
+    with tarfile.open(core) as t:
+        expected={'component.json':json.dumps(component,indent=2).encode(),'units/owner-dvr.service':unit}
+        expected.update({'files/'+name:data for name,data in files.items()})
+        assert set(t.getnames())==set(expected),'Bump CORE when changing server package contents'
+        for name,data in expected.items():assert t.extractfile(name).read()==data,('Bump CORE when changing server contents',name)
+else:
+    with tarfile.open(core,'w:gz')as t:
+        add(t,'component.json',json.dumps(component,indent=2).encode());add(t,'units/owner-dvr.service',unit)
+        for name,data in sorted(files.items()):add(t,'files/'+name,data,0o755 if name in ['native/dvr-io','native/observer','native/mfx-codec','runtime/ffmpeg'] else 0o644)
 sys.path.insert(0,str(P));from build_app import build_app
 app=build_app(P,D,APP,APP_MIN_CORE)
 icon=D/'Recorder.png';shutil.copyfile(P/'ui/icon.png',icon)

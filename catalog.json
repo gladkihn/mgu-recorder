@@ -25,12 +25,12 @@
       "id": "owner_dvr",
       "kind": "app",
       "title": "Recorder",
-      "version": "1.5.8",
+      "version": "1.5.9",
       "artifact": {
-        "name": "owner_dvr@1.5.8.tgz",
-        "size": 995386,
-        "sha256": "cd7f7c3584cf5021b35e1caa96b69669856eb1c43d627ef85eab4bbd7d8cfdb7",
-        "url": "https://github.com/gladkihn/mgu-recorder/releases/download/catalog/owner_dvr@1.5.8.tgz"
+        "name": "owner_dvr@1.5.9.tgz",
+        "size": 996921,
+        "sha256": "000fbe654ec5aa89cbb9a5c8aafc7d0b87374649c261e0e570476308c89c3027",
+        "url": "https://github.com/gladkihn/mgu-recorder/releases/download/catalog/owner_dvr@1.5.9.tgz"
       },
       "requires": {
         "owner-dvr": "4.3.4",
