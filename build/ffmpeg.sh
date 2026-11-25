@@ -53,10 +53,11 @@ cc -O2 -march=x86-64 -std=gnu11 "$repo_root/recorder/native/observer.c" -o "$rep
 cc -O2 -march=x86-64 -std=gnu11 "$repo_root/recorder/native/mfx-codec.c" -o "$repo_root/recorder/native/mfx-codec" -ldl
 strip "$repo_root/recorder/runtime/ffmpeg" "$repo_root/recorder/native/dvr-io" "$repo_root/recorder/native/observer" "$repo_root/recorder/native/mfx-codec"
 cd "$repo_root"
+python build/retarget_elf.py
 python - <<'PY'
 import json,hashlib,subprocess,platform
 from pathlib import Path
 p=Path('recorder/runtime/ffmpeg')
-v={'version':'7.1.5','sourceLock':'build/ffmpeg-sources.json','ffmpegSha256':hashlib.sha256(p.read_bytes()).hexdigest(),'builtFromPublishedSources':True,'sourceArchive':'https://github.com/gladkihn/mgu-recorder/releases/download/catalog/ffmpeg-sources-7.1.5.tar.xz','target':'Linux x86_64 glibc 2.17','compiler':subprocess.check_output(['cc','--version'],text=True).splitlines()[0]}
+v={'version':'7.1.5','sourceLock':'build/ffmpeg-sources.json','ffmpegSha256':hashlib.sha256(p.read_bytes()).hexdigest(),'builtFromPublishedSources':True,'sourceArchive':'https://github.com/gladkihn/mgu-recorder/releases/download/catalog/ffmpeg-sources-7.1.5-mgu1.tar.xz','elfInterpreter':'/lib/ld-linux-x86-64.so.2','postLinkStep':'python build/retarget_elf.py','target':'Linux x86_64 glibc 2.17','compiler':subprocess.check_output(['cc','--version'],text=True).splitlines()[0]}
 Path('recorder/runtime/FFMPEG-SOURCE.json').write_text(json.dumps(v,indent=2)+'\n')
 PY

@@ -32,6 +32,11 @@ jobs:
       - name: Restore built runtime for verification
         if: inputs.artifact_run != ''
         run: tar -xzf dist/owner-dvr@4.2.0.tgz -C recorder --strip-components=1 files/native files/runtime
+      - name: Normalize MGU ELF loader and verify target filesystem
+        run: |
+          python3 build/retarget_elf.py
+          if [ ! -e /lib/ld-linux-x86-64.so.2 ]; then sudo ln -s "$(readlink -f /lib64/ld-linux-x86-64.so.2)" /lib/ld-linux-x86-64.so.2; fi
+          python3 build/verify_target_layout.py
       - name: Verify codec
         run: |
           python3 build/verify_runtime.py

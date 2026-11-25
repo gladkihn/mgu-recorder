@@ -1,7 +1,7 @@
 from pathlib import Path
 import hashlib,io,json,tarfile,sys,shutil,subprocess
 R=Path(__file__).resolve().parent.parent;P=R/'recorder';D=R/'dist';D.mkdir(exist_ok=True)
-CORE='4.3.1';APP='1.5.5';APP_MIN_CORE='4.3.1';BASE='https://github.com/gladkihn/mgu-recorder/releases/download/catalog/'
+CORE='4.3.2';APP='1.5.6';APP_MIN_CORE='4.3.2';BASE='https://github.com/gladkihn/mgu-recorder/releases/download/catalog/'
 def sha(data):return hashlib.sha256(data).hexdigest()
 def add(t,name,data,mode=0o644):
     member=tarfile.TarInfo(name);member.size=len(data);member.mode=mode;member.mtime=0;t.addfile(member,io.BytesIO(data))
@@ -46,13 +46,13 @@ for target,kind,title,requires in [(core,'tool','Recorder Server',component['req
     if kind=='app':entry.update(build='unit',icon='Recorder.png',iconSha256=sha(icon.read_bytes()))
     entries.append(entry)
 catalog=json.dumps({'schema':2,'components':entries},indent=2)+'\n';(D/'catalog.json').write_text(catalog);(R/'catalog.json').write_text(catalog)
-sources=D/'ffmpeg-sources-7.1.5.tar.xz'
+sources=D/'ffmpeg-sources-7.1.5-mgu1.tar.xz'
 with tarfile.open(sources,'w:xz')as t:
     for f in sorted((R/'.build/sources').iterdir()):add(t,'sources/'+f.name,f.read_bytes())
-    for name in ['ffmpeg.sh','fetch.py','ffmpeg-sources.json','verify_runtime.py']:add(t,'build/'+name,(R/'build'/name).read_bytes(),0o755 if name.endswith('.sh')else 0o644)
+    for name in ['ffmpeg.sh','fetch.py','ffmpeg-sources.json','verify_runtime.py','retarget_elf.py','verify_target_layout.py']:add(t,'build/'+name,(R/'build'/name).read_bytes(),0o755 if name.endswith('.sh')else 0o644)
     for name in ['FFMPEG-CONFIGURATION.txt','FFMPEG-SOURCE.json']:add(t,name,(P/'runtime'/name).read_bytes())
     for f in sorted((P/'runtime/licenses').iterdir()):add(t,'licenses/'+f.name,f.read_bytes())
     if (D/'build-image.txt').exists():add(t,'build-image.txt',(D/'build-image.txt').read_bytes())
-    add(t,'REBUILD',b'Extract this archive to .build/ in the source tree; build/ffmpeg.sh uses the SHA256-checked sources in .build/sources. Build with the manylinux2014 container recorded in build-image.txt. No source modifications were applied.\n')
+    add(t,'REBUILD',b'Extract this archive to .build/ in the source tree; build/ffmpeg.sh uses the SHA256-checked sources in .build/sources. Build with the manylinux2014 container recorded in build-image.txt. No upstream source modifications were applied. ELF interpreters are normalized by build/retarget_elf.py.\n')
 (D/'SHA256SUMS').write_text(''.join(sha(f.read_bytes())+'  '+f.name+'\n' for f in sorted(D.iterdir())if f.is_file()and f.name!='SHA256SUMS'))
 print(catalog)

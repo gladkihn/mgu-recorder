@@ -1,11 +1,12 @@
 from pathlib import Path
 import subprocess,re,json,tempfile,os
+from retarget_elf import interpreter,TARGET
 R=Path(__file__).resolve().parent.parent;F=R/'recorder/runtime/ffmpeg';D=R/'dist';D.mkdir(exist_ok=True)
 def run(args,**kwargs):return subprocess.run([str(F)]+args,check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,**kwargs)
 checks=[]
 allowed={'libc.so.6','libm.so.6','libpthread.so.0','libdl.so.2','librt.so.1','libgcc_s.so.1'}
 for binary in [F]+[R/'recorder/native'/name for name in ['dvr-io','observer','mfx-codec']]:
-    data=binary.read_bytes();assert data[:5]==b'\x7fELF\x02' and int.from_bytes(data[18:20],'little')==62
+    data=binary.read_bytes();assert interpreter(data)[2]==TARGET;assert data[:5]==b'\x7fELF\x02' and int.from_bytes(data[18:20],'little')==62
     versions=subprocess.check_output(['readelf','--version-info',str(binary)],text=True)
     assert all(tuple(map(int,m.split('.')))<=(2,17) for m in re.findall(r'GLIBC_([0-9.]+)',versions)),binary
     needed=subprocess.check_output(['readelf','-d',str(binary)],text=True)
