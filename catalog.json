@@ -5,12 +5,12 @@
       "id": "owner-dvr",
       "kind": "tool",
       "title": "Recorder Server",
-      "version": "4.3.2",
+      "version": "4.3.3",
       "artifact": {
-        "name": "owner-dvr@4.3.2.tgz",
-        "size": 3220117,
-        "sha256": "216bc11b94741b0429159c2c2980c6332ffde791fa64a5cad8b213f03e31a38d",
-        "url": "https://github.com/gladkihn/mgu-recorder/releases/download/catalog/owner-dvr@4.3.2.tgz"
+        "name": "owner-dvr@4.3.3.tgz",
+        "size": 3221979,
+        "sha256": "2c6ded8c721a2f0c4f9f102830b26f98ba0855f93c2e28be3f305b8af43ce3db",
+        "url": "https://github.com/gladkihn/mgu-recorder/releases/download/catalog/owner-dvr@4.3.3.tgz"
       },
       "requires": {
         "mgu-deploy": "0.8.11"
@@ -25,15 +25,15 @@
       "id": "owner_dvr",
       "kind": "app",
       "title": "Recorder",
-      "version": "1.5.6",
+      "version": "1.5.7",
       "artifact": {
-        "name": "owner_dvr@1.5.6.tgz",
-        "size": 995057,
-        "sha256": "ea7881e85fc65170877cbd11b0872f9a868b6ec026e067361fe4c85b414542e0",
-        "url": "https://github.com/gladkihn/mgu-recorder/releases/download/catalog/owner_dvr@1.5.6.tgz"
+        "name": "owner_dvr@1.5.7.tgz",
+        "size": 995229,
+        "sha256": "27631506eea18366200d1ac9edfe4461fd7d1d08441ad1f3a0f58dc3dd061745",
+        "url": "https://github.com/gladkihn/mgu-recorder/releases/download/catalog/owner_dvr@1.5.7.tgz"
       },
       "requires": {
-        "owner-dvr": "4.3.2",
+        "owner-dvr": "4.3.3",
         "mgu-render": "0.6.19",
         "mgu-deploy": "0.8.11"
       },
