@@ -2,7 +2,10 @@
 const fs=require('fs'),path=require('path'),vm=require('vm'),assert=require('assert'),EventEmitter=require('events');
 const root=path.resolve(__dirname,'../recorder'),src=n=>require(path.join(root,'src',n));
 const {Guidelines,Journal}=src('guidelines'),{ObservedField}=src('observed-fields'),{ParkingGuard}=src('parking-guard'),cat=src('catalog'),diagnostics=require(path.join(root,'ui/diagnostics'));
-const catalog=JSON.parse(fs.readFileSync(path.resolve(__dirname,'../../live-rse-v15/rse-oap-original/etc/oap/someip/someip-interfaces.json'))),front=src('policy').REQUEST;
+// Minimal, synthetic catalogue: exercise schema selection without a vehicle dump.
+const field=(dataRef,id,set)=>Object.assign({dataRef,getter:{id},notifier:{id:0x8000+id,eventgroups:[1]}},set?{setter:{id:100+id}}:{});
+const iface=(name,fields)=>({name,serviceId:1234,version:{major:1,minor:0},fields,methods:{},events:{}});
+const catalog={datatypes:{Toggle:{type:'enum',items:{OFF:0,ON:1}}},instanceIDs:{},interfaces:{'de.bmw.dass.XView3D':iface('de.bmw.dass.XView3D',{CurrentState:field('Scene',1),Trajectories:field('Toggle',2,true),ObstacleIdentification:field('Toggle',3,true)}),'de.bmw.infotainment.video.cameraproxy.ICAM2Proxy':iface('de.bmw.infotainment.video.cameraproxy.ICAM2Proxy',{currentState:field('Scene',1),cameraProxyState:field('Ready',2)})}},front=src('policy').REQUEST;
 const flush=async()=>{for(let i=0;i<30;i++)await new Promise(r=>setImmediate(r));};
 async function watchdog(mode){
  let time=1000,exit=null,reads=0,parkSurface;const calls=[],messages=[],timers=[],journals={},handlers={};
