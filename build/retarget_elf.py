@@ -3,7 +3,7 @@ from pathlib import Path
 import hashlib,json,struct
 
 TARGET='/lib/ld-linux-x86-64.so.2'
-NAMES=['native/dvr-io','native/observer','native/mfx-codec','runtime/ffmpeg']
+NAMES=['native/dvr-io','native/observer','native/mfx-codec','native/mfx-compose','native/mfx-preview','native/nv-feed','runtime/ffmpeg']
 
 def interpreter(data):
     assert data[:6]==b'\x7fELF\x02\x01' and struct.unpack_from('<H',data,18)[0]==62,'Expected little-endian ELF64 x86_64'

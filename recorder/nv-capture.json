@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "capture": "verified-v4l2-dmabuf",
+  "gid": 4004,
+  "sarNum": 9,
+  "sarDen": 10,
+  "width": 720,
+  "fieldHeight": 243,
+  "format": "UYVY",
+  "device": "/dev/video32",
+  "niviSha256": "9630f2d0ceb4d8cefb093f80b5f81074ac4fb16bab0ef62f6741a09fd25e2b18",
+  "mavlSha256": "1b93513b2ff7cfb93cf31dae2b887d40be920301113f0177c5d9943855776786"
+}

@@ -1,0 +1,8 @@
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "../recorder/native/nv-weave.h"
+static unsigned frames;static uint64_t last;static unsigned char topPixel,bottomPixel;
+static int output(void*c,const uint32_t*m,const unsigned char*d){(void)c;uint64_t stamp;memcpy(&stamp,m+2,8);assert(stamp>=last);last=stamp;assert(m[5]==32&&m[0]==1024);for(unsigned y=0;y<32;y++)for(unsigned x=0;x<32;x++)assert(d[y*32+x]==(y%2?bottomPixel:topPixel));frames++;return 0;}
+static void field(NVWeaver*w,unsigned which,uint64_t stamp,double now,unsigned char value){uint32_t m[10]={512,0,0,0,16,16,32,0x59565955,1,1};memcpy(m+2,&stamp,8);unsigned char d[512];memset(d,value,sizeof(d));if(which)bottomPixel=value;else topPixel=value;assert(!nvWeaveField(w,m,d,512,which,now));}
+int main(void){NVWeaver w={0};w.data[0]=malloc(NV_MAX);w.data[1]=malloc(NV_MAX);w.woven=malloc(NV_MAX);w.sink=output;for(unsigned i=0;i<1500;i++){double at=i*1000.0/30;unsigned char t=(i*3)%251,b=(i*5)%251;field(&w,0,(uint64_t)(at*1e6),at,t);assert(!nvWeaveIdle(&w,at+100,1));assert(frames==i);field(&w,1,(uint64_t)((at+16.6)*1e6),at+100,b);assert(frames==i+1);}assert(frames==1500);nvWeaveReset(&w);frames=0;last=0;topPixel=11;bottomPixel=22;field(&w,0,100000000,100,11);field(&w,1,116000000,116,22);topPixel=33;field(&w,0,133000000,133,33);assert(!nvWeaveIdle(&w,150,0));assert(frames==1);assert(!nvWeaveIdle(&w,155,0));assert(frames==2);bottomPixel=44;field(&w,1,166000000,166,44);assert(!nvWeaveIdle(&w,190,0));assert(frames==3);free(w.data[0]);free(w.data[1]);free(w.woven);puts("PASS NV field scheduling: 1500 delayed pairs produce 1500 frames; queued opposite field wins over timeout; genuine loss reuses previous field; no duration inflation");return 0;}

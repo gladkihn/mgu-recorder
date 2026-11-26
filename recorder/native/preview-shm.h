@@ -1,0 +1,11 @@
+#ifndef OWNER_PREVIEW_SHM_H
+#define OWNER_PREVIEW_SHM_H
+#include "pixel-ops.h"
+#ifndef OWNER_PREVIEW_FILE
+#define OWNER_PREVIEW_FILE "/dev/shm/mgu-video-owner-dvr"
+#endif
+static unsigned char*previewMap;static size_t previewBytes;static unsigned previewW,previewH,previewSeq,previewSlot;
+static int previewInit(unsigned w,unsigned h){if(previewMap){munmap(previewMap,previewBytes);previewMap=NULL;}int fd=open(OWNER_PREVIEW_FILE,O_RDWR|O_CREAT|O_NOFOLLOW|O_CLOEXEC,0644);struct stat st;if(fd<0||fstat(fd,&st)||!S_ISREG(st.st_mode)||st.st_nlink!=1||st.st_uid!=geteuid()){if(fd>=0)close(fd);return -1;}uint32_t old[16]={0};if(pread(fd,old,64,0)!=64||old[0]!=0x4656474d||old[1]!=1)old[4]=0;previewBytes=64+(size_t)w*h*3/2*3;if(ftruncate(fd,previewBytes)||fchmod(fd,0644)){close(fd);return -1;}previewMap=mmap(NULL,previewBytes,PROT_READ|PROT_WRITE,MAP_SHARED,fd,0);close(fd);if(previewMap==MAP_FAILED){previewMap=NULL;return -1;}previewW=w;previewH=h;previewSeq=old[4];previewSlot=0;uint32_t*header=(uint32_t*)previewMap;memset(previewMap,0,64);header[0]=0x4656474d;header[1]=1;header[2]=w;header[3]=h;header[4]=previewSeq;header[6]=3;header[7]=1;return 0;}
+static int publish(mfxFrameSurface1*s){unsigned w=s->Info.CropW,h=s->Info.CropH,id=*(unsigned*)s->Data.MemId;VAImage im={0};if(!previewMap||w!=previewW||h!=previewH)if(previewInit(w,h))return -1;if(syncSurface(va,id)||deriveImage(va,id,&im))return -1;void*ptr=NULL;int result=-1;if(im.format.fourcc!=MFX_FOURCC_NV12||im.num_planes<2||im.pitches[0]<w||im.pitches[1]<w||im.offsets[0]+(h-1)*im.pitches[0]+w>im.data_size||im.offsets[1]+(h/2-1)*im.pitches[1]+w>im.data_size)goto done;if(mapBuffer(va,im.buf,&ptr))goto done;unsigned slot=(previewSlot+1)%3;unsigned char*dst=previewMap+64+(size_t)slot*w*h*3/2,*src=ptr;for(unsigned y=0;y<h;y++)gpuCopyRow(dst+(size_t)y*w,src+im.offsets[0]+(size_t)y*im.pitches[0],w);unsigned char*u=dst+w*h,*v=u+w*h/4;for(unsigned y=0;y<h/2;y++){const unsigned char*uv=src+im.offsets[1]+(size_t)y*im.pitches[1];gpuSplitUV(uv,u+(size_t)y*w/2,v+(size_t)y*w/2,w/2);}unmapBuffer(va,im.buf);uint32_t*header=(uint32_t*)previewMap;atomic_store_explicit((_Atomic uint32_t*)&header[5],slot,memory_order_release);atomic_store_explicit((_Atomic uint32_t*)&header[4],++previewSeq,memory_order_release);previewSlot=slot;result=0;
+done:destroyImage(va,im.image_id);return result;}
+#endif

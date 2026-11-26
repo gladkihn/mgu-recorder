@@ -1,0 +1,5 @@
+'use strict';
+const assert=require('assert'),path=require('path'),{Recorder}=require('../recorder/src/service');
+const mono=()=>{const t=process.hrtime();return t[0]*1000+t[1]/1e6;};
+const r=new Recorder({settingsFile:path.join(__dirname,'no-such-settings.json')}),rows=[];r.platformState={scene:{id:1},sceneAt:Date.now(),speedAt:Date.now(),speedRaw:0};r.media={liveMode:true};r.hub={frame(){}};r.trips={current:()=>1};r.timeline={enabled:true,push:(source,row)=>rows.push({source,row})};const capture=mono()-70;
+r.frame({mono:capture,data:Buffer.alloc(8),raw:Buffer.alloc(8)});r.nvFrame({mono:capture-1000,data:Buffer.alloc(8)});assert.equal(rows.length,2);assert(rows[0].row.mono>=capture+69);assert(rows[1].row.mono>=rows[0].row.mono);assert.equal(rows[0].row.captureMono,capture);assert.equal(rows[1].row.captureMono,capture-1000);r.timeline.enabled=false;r.want=true;const original=mono()-10;r.frame({mono:original,data:Buffer.alloc(8),raw:Buffer.alloc(8)});assert.equal(rows[2].row.mono,original);console.log('PASS joint ingress clock: delayed NV retained, monotonic composites, capture timestamps kept and disabled-NV timing unchanged');

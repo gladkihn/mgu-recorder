@@ -16,3 +16,10 @@ id_ed25519*
 known_hosts*
 .env*
 RESULT*
+**/native/mfx-compose
+**/native/mfx-preview
+**/native/nv-feed
+**/native/nv-tap.so
+tests/*.ring
+tests/*.json
+tests/*.png

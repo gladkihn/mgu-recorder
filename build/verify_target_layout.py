@@ -24,7 +24,7 @@ with tempfile.TemporaryDirectory() as tmp:
     r=run(['sudo','chroot',str(root),'/native/dvr-io','low-priority','--','/native/dvr-io','allocate','/data/test.bin','4096']);assert r.returncode==0,r.stderr;assert (root/'data/test.bin').stat().st_size==4096
     r=run(['sudo','chroot',str(root),'/native/dvr-io','lockrun','/data/test.lock','/runtime/ffmpeg','-version']);assert r.returncode==0,r.stderr;assert b'ffmpeg version 7.1.5' in r.stdout
     checks.append('Patched helper, nested helper allocation, lockrun and FFmpeg start with /lib only')
-    for name,args,code in [('observer',['--seconds','1'],3),('mfx-codec',['--6000kbps'],3)]:
+    for name,args,code in [('observer',['--seconds','1'],3),('mfx-codec',['--6000kbps'],3),('mfx-compose',['--icam'],3),('mfx-preview',['--i420'],3)]:
         r=run(['sudo','chroot',str(root),'/native/'+name]+args,input=b'');assert r.returncode==code,(name,r.returncode,r.stderr)
     checks.append('Observer and hardware codec enter their own code; no exec/loader failure')
 report={'status':'PASS','checks':checks,'hardwareCameraTested':False,'binaries':{n:hashlib.sha256((R/'recorder'/n).read_bytes()).hexdigest() for n in NAMES}}

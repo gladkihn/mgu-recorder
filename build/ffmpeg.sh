@@ -51,6 +51,7 @@ cp "$build_root/src/freetype/LICENSE.TXT" "$repo_root/recorder/runtime/licenses/
 cc -O2 -march=x86-64 -std=gnu11 "$repo_root/recorder/native/dvr-io.c" -o "$repo_root/recorder/native/dvr-io"
 cc -O2 -march=x86-64 -std=gnu11 "$repo_root/recorder/native/observer.c" -o "$repo_root/recorder/native/observer" -ldl -pthread
 cc -O2 -march=x86-64 -std=gnu11 "$repo_root/recorder/native/mfx-codec.c" -o "$repo_root/recorder/native/mfx-codec" -ldl
+bash "$repo_root/build/native.sh"
 strip "$repo_root/recorder/runtime/ffmpeg" "$repo_root/recorder/native/dvr-io" "$repo_root/recorder/native/observer" "$repo_root/recorder/native/mfx-codec"
 cd "$repo_root"
 python build/retarget_elf.py

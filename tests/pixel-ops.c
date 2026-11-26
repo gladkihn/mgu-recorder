@@ -1,0 +1,5 @@
+#include <assert.h>
+#include <stdio.h>
+#include <string.h>
+#include "../recorder/native/pixel-ops.h"
+int main(void){unsigned char aa[4112],bb[4112],uu[2056],vv[2056];for(unsigned i=0;i<sizeof(aa);i++){aa[i]=(i*17+53)%256;bb[i]=(i*91+12)%256;}for(unsigned w=2;w<=2048;w+=2)for(unsigned off=0;off<16;off++){const unsigned char*a=aa+off,*b=bb+off;memset(uu,0xcc,sizeof(uu));memset(vv,0xcc,sizeof(vv));gpuSplitUV(a,uu,vv,w/2);for(unsigned x=0;x<w/2;x++){assert(uu[x]==a[x*2]);assert(vv[x]==a[x*2+1]);}assert(uu[w/2]==0xcc&&vv[w/2]==0xcc);gpuCopyRow(uu,a,w);assert(!memcmp(uu,a,w));for(unsigned parity=0;parity<2;parity++){memset(uu,0xcc,sizeof(uu));packed422Luma(a,uu,w,parity);for(unsigned x=0;x<w;x++)assert(uu[x]==a[x*2+parity]);assert(uu[w]==0xcc);memset(uu,0xcc,sizeof(uu));packed422Chroma(a,b,uu,w,parity);for(unsigned x=0;x<w;x++)assert(uu[x]==((unsigned)a[x*2+parity]+b[x*2+parity])/2);assert(uu[w]==0xcc);}}puts("PASS SSE2/SSE4.1 GPU pixel paths match scalar reference at every even width and byte alignment");return 0;}

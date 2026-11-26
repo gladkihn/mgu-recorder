@@ -1,0 +1,3 @@
+'use strict';
+const assert=require('assert'),{HardwareMedia}=require('../recorder/src/hardware-media');
+(async()=>{for(const nextMono of [3600000,100]){const rows=[{mono:1000,tripId:1},{mono:1040,tripId:1},{mono:nextMono,tripId:2},{mono:nextMono+40,tripId:2}].map((r,i)=>Object.assign(r,{seq:i+1,wall:10000+i*40})),targets=[],m=new HardwareMedia({after:async()=>[]},{});m.token=1;m.started=500;m.firstMono=null;m.previousRow=null;m.playElapsed=0;m.waitUntil=async target=>targets.push(target-500);m.write=async r=>{m.lastSeq=r.seq;};await m.pump(rows,1);assert.deepEqual(targets,[0,40,80,120]);}console.log('PASS archive playback: trip idle time and reboot clock reset do not stall or burst playback');})().catch(e=>{console.error(e.stack);process.exitCode=1;});

@@ -2,6 +2,7 @@
 const cp=require('child_process'),EventEmitter=require('events');
 const MAX=2*1048576;
 function independent(b){let mask=0;for(let i=0;i+4<b.length;i++){let p=0;if(b[i]===0&&b[i+1]===0){if(b[i+2]===1)p=i+3;else if(b[i+2]===0&&b[i+3]===1)p=i+4;}if(p&&p<b.length){const t=b[p]&31;if(t===7)mask|=1;if(t===8)mask|=2;if(t===5)mask|=4;if(t===1)return false;i=p;}}return mask===7;}
+function accessUnit(b){let vcl=false;for(let i=0;i+4<b.length;i++){let p=0;if(!b[i]&&!b[i+1]){if(b[i+2]===1)p=i+3;else if(!b[i+2]&&b[i+3]===1)p=i+4;}if(p){const t=b[p]&31;if(t===1||t===5)vcl=true;i=p;}}return vcl;}
 class Compressor extends EventEmitter{
  constructor(binary,o){super();this.binary=binary;this.o=o||{};this.spawn=this.o.spawn||cp.spawn;this.now=this.o.now||Date.now;this.queue=[];this.byId=new Map();this.serial=0;this.retryAt=0;this.stopped=false;this.stats={codec:'h264-hardware',targetKbps:6000,frames:0,fallback:0,inputBytes:0,outputBytes:0,restarts:0,error:null};this.timer=setInterval(()=>this.flush(),50);if(this.timer.unref)this.timer.unref();}
  start(){if(this.child||this.stopped||this.now()<this.retryAt)return;try{const c=this.spawn('/lib/ld-linux-x86-64.so.2',[this.binary,'--6000kbps'],{stdio:['pipe','pipe','pipe']});this.child=c;this.buffer=Buffer.alloc(0);this.stats.restarts++;let stderr='';c.stdin.on('error',e=>this.fail(c,e.message));c.on('error',e=>this.fail(c,e.message));c.stderr.on('data',b=>{stderr=(stderr+b).slice(-2048);});c.stdout.on('data',b=>{if(this.child!==c)return;try{this.read(b);}catch(e){this.fail(c,e.message);}});c.on('close',(code,signal)=>{if(this.child===c)this.fail(c,'Hardware codec exited '+code+'/'+signal+': '+stderr);});}catch(e){this.stats.error=e.message;this.retryAt=this.now()+30000;}}
@@ -12,4 +13,4 @@ class Compressor extends EventEmitter{
  status(){return Object.assign({},this.stats,{active:!!this.child,pending:this.queue.length,ratio:this.stats.outputBytes?this.stats.inputBytes/this.stats.outputBytes:null});}
  stop(){this.stopped=true;clearInterval(this.timer);const c=this.child;this.child=null;this.queue=[];this.byId.clear();if(c)try{c.kill('SIGKILL');}catch(e){}return Promise.resolve();}
 }
-module.exports={Compressor,independent};
+module.exports={Compressor,independent,accessUnit};

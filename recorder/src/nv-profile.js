@@ -1,0 +1,4 @@
+'use strict';
+const fs=require('fs'),path=require('path'),crypto=require('crypto');
+function geometry(root,o){try{const f=o&&o.fs||fs,p=JSON.parse(f.readFileSync(path.join(root,'nv-capture.json')));if(crypto.createHash('sha256').update(f.readFileSync('/usr/bin/nivi3sink')).digest('hex')!==p.niviSha256||p.mavlSha256&&crypto.createHash('sha256').update(f.readFileSync('/usr/lib/libmavl-apl.so.0')).digest('hex')!==p.mavlSha256)return null;if(p.schema!==1||!/^verified-v4l2-(mmap|dmabuf)$/.test(p.capture)||!Number.isInteger(p.width)||p.width<16||p.width>1024||!Number.isInteger(p.fieldHeight)||p.fieldHeight<16||p.fieldHeight>288)return null;const formats={UYVY:0x59565955,YUYV:0x56595559,NV12:0x3231564e,GREY:0x59455247};if(!formats[p.format])return null;return {width:p.width,height:p.fieldHeight*2,fourcc:formats[p.format],sarNum:p.sarNum||1,sarDen:p.sarDen||1};}catch(e){return null;}}
+module.exports={geometry};

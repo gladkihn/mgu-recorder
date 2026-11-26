@@ -1,0 +1,59 @@
+'use strict';
+const fs=require('fs'),path=require('path'),assert=require('assert'),vm=require('vm'),EventEmitter=require('events');
+const root=path.resolve(__dirname,'../recorder'),{PlaybackSession}=require(path.join(root,'ui/playback-session'));
+const base=1700000000000,ranges=[{from:base,to:base+120000,tripId:9}],state=(mode='stopped',wall=null,live=true)=>({ranges,player:{mode,wall},liveAvailable:live});
+const checks=[];
+async function mainFlow(){
+ let config,writes=0,commandCount=0,gate=null;const calls=[],timers=[],hosts={record:new EventEmitter(),fallback:new EventEmitter()};
+ const stored={};const fakefs={existsSync:()=>false,statSync:()=>({isFile:()=>true}),lstatSync:f=>{if(!(f in stored))throw Error('ENOENT');return {isFile:()=>true,isSymbolicLink:()=>false,nlink:1,size:stored[f].length};},readFileSync:f=>stored[f],writeFileSync:(f,b)=>{stored[f]=b;writes++;},renameSync:(a,b)=>{stored[b]=stored[a];delete stored[a];},appendFileSync:()=>{}};
+ let backend=Object.assign(state(),{settings:{privacy:false},recording:true,export:null,parkingGuard:{active:false},archiveChange:null});
+ class Api{async call(c){calls.push(c);if(c.op==='status'){if(gate){const g=gate;gate=null;await g;}return JSON.parse(JSON.stringify(backend));}if(['live','preview','seek','pause','stop'].indexOf(c.op)>=0)commandCount++;if(c.op==='live')backend.player={mode:'live',wall:base+119000};if(c.op==='preview')backend.player={mode:'paused',wall:c.wall};if(c.op==='seek')backend.player={mode:'playing',wall:c.wall};if(c.op==='stop')backend.player={mode:'stopped',wall:null};return true;}}
+ class View{constructor(){this.cursor=null;this.drag=false;this.page='history';}setPage(p){this.page=p;}update(s){this.status=s;if(s.player.wall)this.cursor=s.player.wall;else if(this.cursor===null)this.cursor=base;}dismissExport(){}draw(){return {};}touch(){}controller(){}}
+ class Session extends PlaybackSession{constructor(f){super(f,{fs:fakefs,now:()=>now});}}
+ class RenderClient extends EventEmitter{constructor(){super();this.ready=false;}connect(){}show(){}grab(){}close(){}}
+ const runtime={'render-client':{RenderClient},'kit/record':{},view:{View},api:{Api},diagnostics:{connection:()=>'',runtime:()=>''},'playback-session':{PlaybackSession:Session}};
+ const processMock=new EventEmitter();Object.assign(processMock,{getuid:()=>12001,stderr:{write(){}},cwd:()=>'/app',argv:['node','/app/javascript/main.js'],exit(){}});
+ let now=0;const context={require:n=>n==='fs'?fakefs:n==='path'?path:n==='./online-host.js'?{createHost:c=>{config=c;}}:n.includes('renderer')?runtime[n.replace(/\\/g,'/').split('/renderer/')[1]]:require(n),process:processMock,__dirname:'/app/javascript',setTimeout:(fn,ms)=>{timers.push({fn,ms});return timers.length;},clearTimeout:()=>{},setInterval:fn=>{timers.push({fn,interval:true});return timers.length;},Date,console};
+ vm.createContext(context);vm.runInContext(fs.readFileSync(path.join(root,'ui/main.js'),'utf8'),context);
+ const closed=[];const rhmi={getByName:()=>new EventEmitter(),closeState:async name=>{closed.push(name);},openState:async()=>{}};config.onReady(rhmi,hosts);
+ const flush=async()=>{for(let i=0;i<15;i++)await new Promise(r=>setImmediate(r));};
+ hosts.record.emit('visible',{visible:true});await flush();assert.equal(backend.player.mode,'live');assert.equal(commandCount,1);assert.equal(writes,0);
+ // Closing saves live; reopening must restart it, with the old stop ordered first.
+ config.onHidden();hosts.record.emit('visible',{visible:true});await flush();const tail=calls.filter(c=>c.op!=='status').slice(-2);assert.deepEqual(tail.map(c=>c.op),['stop','live']);
+ vm.runInContext('act({op:"preview",wall:'+String(base+40000)+'})',context);timers.filter(t=>t.ms===180).pop().fn();await flush();assert.equal(backend.player.mode,'paused');config.onHidden();hosts.record.emit('visible',{visible:true});await flush();assert.equal(backend.player.mode,'paused');assert.equal(backend.player.wall,base+40000);assert.equal(calls.filter(c=>c.op!=='status').pop().op,'preview');
+ config.onHidden();backend.ranges=[{from:base+80000,to:base+120000,tripId:9}];hosts.record.emit('visible',{visible:true});await flush();assert.equal(backend.player.mode,'live');
+ backend.ignition=false;backend.liveAvailable=false;now=2500;const currentPoll=timers.find(t=>t.interval).fn;await currentPoll();await flush();assert.equal(backend.player.mode,'playing');assert.equal(backend.player.wall,base+80000);assert.equal(vm.runInContext('view.notice',context),'');
+ const manualBefore=calls.filter(c=>c.op==='live').length;await vm.runInContext('act({op:"live"})',context);assert.equal(vm.runInContext('view.notice',context),'Включите зажигание');assert.equal(calls.filter(c=>c.op==='live').length,manualBefore);assert.equal(backend.player.mode,'playing');
+ checks.push('Actual UI silently falls back to archive; manual live with ignition off shows the prompt without stopping playback or sending a live command');
+ // A status response delivered after close must never launch playback.
+ let unblock;gate=new Promise(r=>unblock=r);const poll=timers.find(t=>t.interval).fn;poll();await flush();config.onHidden();const before=calls.filter(c=>['live','preview','seek'].indexOf(c.op)>=0).length;unblock();await flush();assert.equal(calls.filter(c=>['live','preview','seek'].indexOf(c.op)>=0).length,before,'no late start after close');
+ checks.push('Actual UI opens live, restores an archive poster, falls back after overwrite, serializes stop/reopen and ignores a late status after hiding');
+ await vm.runInContext('act({op:"exit"})',context);await flush();assert(closed.includes('record'));assert.equal(backend.recording,true);assert(!calls.some(c=>c.op==='privacy'));checks.push('Actual UI exits through the HMI state and leaves background recording enabled');
+}
+(async()=>{
+ let now=0,writes=0;const dir=fs.mkdtempSync(path.join(__dirname,'prefs-')),file=path.join(dir,'state.json'),spy=Object.create(fs);spy.writeFileSync=(...a)=>{writes++;return fs.writeFileSync(...a);};const make=()=>new PlaybackSession(file,{now:()=>now,fs:spy});let s=make();s.open();assert.deepEqual(s.plan(state(),false),{op:'live'});s.close(state('live',base+100000));assert.equal(writes,1);s=make();s.open();assert.equal(s.plan(state(),false).op,'live');s.close(state('live',base+110000));assert.equal(writes,1);
+ checks.push('First entry selects available live video; live intent survives process restart without repeated preference writes');
+ s=make();s.open();let token=s.command({op:'preview',wall:base+30000},state());assert.equal(s.plan(state(),false),null);s.applied(token);s.close(state('paused',base+30040));s=make();s.open();assert.deepEqual(s.plan(state(),false),{op:'preview',wall:base+30040});assert.equal(s.choice.mode,'archive');
+ // Subsequent playback progress becomes the next resume point, with no disk writes per frame.
+ const before=writes;for(let i=0;i<1000;i++)s.observe(state('playing',base+30040+i*40),false);assert.equal(writes,before);s.close(state('playing',base+70000));s=make();s.open();assert.deepEqual(s.plan(state(),false),{op:'preview',wall:base+70000});
+ checks.push('Archive resumes as a still frame at the selected/last played timestamp; progress causes no disk writes');
+ s.close(state('paused',base+70000));s=make();s.open();assert.equal(s.plan({ranges:[{from:base+80000,to:base+120000,tripId:9}],player:{mode:'stopped'},liveAvailable:true},false).op,'live');
+ s=make();s.open();assert.equal(s.plan({ranges:[{from:base,to:base+120000,tripId:10}],player:{mode:'stopped'},liveAvailable:true},false).op,'live');
+ checks.push('Overwritten timestamps and a different trip at the same clock position revert to live instead of snapping elsewhere');
+ s=new PlaybackSession(path.join(dir,'new.json'),{now:()=>now});s.open();assert.deepEqual(s.plan(state('stopped',null,false),false),{op:'seek',wall:base+60000});now+=2500;assert.equal(s.plan(state('paused',base+120000,false),false),null);assert.equal(s.plan(state('paused',base+120000,true),false).op,'live');
+ s=new PlaybackSession(path.join(dir,'empty.json'),{now:()=>now});s.open();assert.equal(s.plan({ranges:[],player:{mode:'stopped'},liveAvailable:false},false),null);assert.equal(s.plan(state(),true),null);assert.equal(s.plan(state(),false).op,'live');
+ checks.push('Sleeping camera plays the last recorded minute then waits; empty archive and OEM parking do not trigger invalid requests');
+ const historyFile=path.join(dir,'with-history.json');s=new PlaybackSession(historyFile,{now:()=>now});s.open();let historyToken=s.command({op:'preview',wall:base+20000},state());s.applied(historyToken);s.observe(state('paused',base+20000),false);historyToken=s.command({op:'live'},state());s.applied(historyToken);s.close(state('live',base+120000));s=new PlaybackSession(historyFile,{now:()=>now});s.open();assert.deepEqual(s.plan(state('stopped',null,false),false),{op:'seek',wall:base+20000});s.observe(state('playing',base+25000,false),false);s.close(state('playing',base+25000,false));s=new PlaybackSession(historyFile,{now:()=>now});s.open();assert.equal(s.plan(state('stopped',null,false),false).wall,base+25000);
+ const lastMinute=require(path.join(root,'ui/playback-session')).lastMinute;assert.equal(lastMinute({ranges:[{from:base-500000,to:base-100000,tripId:1},{from:base,to:base+20000,tripId:2}]}).wall,base);assert.equal(lastMinute({ranges:[{from:base,to:base+30000,tripId:2},{from:base+3600000,to:base+3630000,tripId:2}]}).wall,base+3600000);
+ s=new PlaybackSession(path.join(dir,'live-race.json'),{now:()=>now});s.open();assert.equal(s.plan(state(),false).op,'live');assert(s.missing(Error('Live camera unavailable')));now+=500;assert.deepEqual(s.plan(state(),false),{op:'seek',wall:base+60000});
+ const {View}=require(path.join(root,'ui/view'));const offView=new View();offView.update(Object.assign(state('stopped',null,false),{ignition:false,settings:{},export:null}));offView.draw(1600,600);const liveButton=offView.controls.find(c=>c.id==='live');assert(liveButton,'dimmed button still provides ignition feedback');assert.deepEqual(offView.touch('up',liveButton.x+10,liveButton.y+10),{op:'notice',text:'Включите зажигание'});
+ checks.push('Live preference retains the previous archive position; fallback plays from it or from the latest trip minute, handles a failed live request silently, and the dimmed button explains ignition');
+ s=make();s.open();token=s.command({op:'preview',wall:base+10000},state());s.close(state('live',base+110000),true);s.applied(token);s=make();s.open();assert.equal(s.plan(state(),false).wall,base+10000);
+ checks.push('Closing during a pending seek preserves the new selection rather than an older frame');
+ s=new PlaybackSession(path.join(dir,'cancelled.json'),{now:()=>now});s.open();const first=s.command({op:'preview',wall:base+10000},state()),second=s.command({op:'pause'},state('playing',base+30000));s.applied(first);assert.equal(s.pending,second);s.applied(second);assert.equal(s.pending,null);assert.equal(s.choice.wall,base+30000);
+ checks.push('Pause supersedes a debounced seek without leaving status updates blocked');
+ s=make();s.open();s.plan(state(),false);assert(s.missing(Error('Archive range was overwritten')));now+=500;assert.equal(s.plan(state(),false).op,'live');
+ s=new PlaybackSession(path.join(dir,'damaged.json'),{now:()=>now});s.open();s.plan(state('stopped',null,false),false);assert(s.missing(Error('No video at selected time')));now+=2500;assert.equal(s.plan(state('stopped',null,false),false),null);assert.equal(s.missing(Error('Permission denied')),false);
+ checks.push('Overwrite between status and preview falls back to live; a missing fallback poster does not create a retry loop');
+ await mainFlow();const report={status:'PASS',checks,carAccessed:false};fs.writeFileSync(path.join(__dirname,'RESULT.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
+})().catch(e=>{console.error(e.stack);process.exitCode=1;});

@@ -1,0 +1,17 @@
+'use strict';
+const assert=require('assert'),{FrameTimeline}=require('../recorder/src/frame-timeline');
+function run(main,nv){const t=new FrameTimeline({reorderMs:24}),out=[];t.configure(true);t.on('frame',r=>out.push(r));const input=main.map((mono,id)=>({source:'icam',row:{mono,wall:100000+mono,displayWall:200000+mono,data:Buffer.from('i'+id)}})).concat(nv.map((mono,id)=>({source:'nv',row:{mono,wall:100000+mono,data:Buffer.from('n'+id)}}))).sort((a,b)=>a.row.mono-b.row.mono);for(const e of input)t.push(e.source,e.row);t.flush(Infinity);const times=main.concat(nv);assert.equal(out[out.length-1].mono,Math.max.apply(null,times));for(let i=1;i<out.length;i++)assert(out[i].mono>out[i-1].mono);for(const r of out)assert(times.includes(r.mono));for(const e of input)assert(out.some(r=>r[e.source]&&r[e.source].data===e.row.data),'Every incoming frame must appear in a composite');for(const r of out){assert.equal(r.wall,100000+r.mono);for(const key of ['icam','nv'])if(r[key])assert(r[key].mono<=r.mono);assert.equal(r.width,1920);}return out;}
+const seq=(n,step,start=0)=>Array.from({length:n},(_,i)=>start+i*step);
+run(seq(25,40),seq(25,40));
+const phased=run(seq(25,40),seq(25,40,20));assert.equal(phased.length,25);assert.equal(phased[24].mono-phased[0].mono,960); // 50 source events, 25 complete composites, no duration doubling
+run(seq(25,40).filter((_,i)=>i%3),seq(25,40).filter((_,i)=>i%4));
+run(seq(25,40),seq(9,111));run(seq(25,40),[0,40,80]);run([0,40,80],seq(25,40));run([],seq(20,40));
+let t=new FrameTimeline(),o=[];t.on('frame',r=>o.push(r));t.push('icam',{mono:100,wall:1000,data:Buffer.alloc(5)});t.push('icam',{mono:3000,wall:3900,data:Buffer.alloc(5)});t.flush(Infinity);assert.deepStrictEqual(o.map(r=>r.mono),[100,3000]);assert.equal(o[0].width,1280);
+t=new FrameTimeline();t.configure(true);o=[];t.on('frame',r=>o.push(r));for(const [src,time] of [['icam',40],['nv',20],['icam',0]])t.push(src,{mono:time,wall:1000+time,data:Buffer.alloc(5)});t.flush(Infinity);assert.deepStrictEqual(o.map(r=>r.mono),[20,40]);const late=Buffer.from('late');t.push('nv',{mono:0,wall:1000,data:late});t.flush(Infinity);assert.equal(o[o.length-1].nv.data,late);assert(o[o.length-1].mono>40&&o[o.length-1].mono<40.01);
+console.log('PASS frame timeline: aligned, phase shifted, missing frames, unequal rates, stalled source, reordered and late delivery retained, real duration');
+
+// One real minute with unequal rates and independent one-second camera outages.
+const long=new FrameTimeline(),all=[],input=[],seen=new Set();long.configure(true);long.on('frame',r=>{all.push(r);for(const k of ['icam','nv'])if(r[k])seen.add(r[k].data);});
+for(let at=0;at<=60100;at+=40)if(!(at>=11000&&at<12000))input.push({source:'icam',row:{mono:at,wall:100000+at,tripId:3,data:Buffer.from('i'+at)}});
+for(let at=19;at<=60100;at+=111)if(!(at>=23000&&at<24000))input.push({source:'nv',row:{mono:at,wall:100000+at,tripId:3,data:Buffer.from('n'+at)}});
+input.sort((a,b)=>a.row.mono-b.row.mono);for(const e of input){long.push(e.source,e.row);long.flush(e.row.mono);}long.flush(Infinity);assert(input.every(e=>seen.has(e.row.data)));const clip=require('../recorder/src/format').clip(all,all[0].wall,60000);assert.equal(clip.durationMs,60000);for(let i=1;i<clip.rows.length;i++)assert.equal(clip.rows[i].mono-clip.rows[i-1].mono,all[i].mono-all[i-1].mono);assert(clip.rows[clip.rows.length-1].mono-clip.rows[0].mono>=59960);console.log('PASS full-minute VFR export timing with camera outages; every source frame retained');
