@@ -31,6 +31,7 @@ jobs:
           docker image inspect quay.io/pypa/manylinux2014_x86_64:latest --format '{{index .RepoDigests 0}}' > dist/build-image.txt
           if [ '${{ inputs.rebuild_runtime }}' = 'true' ]; then script=build/ffmpeg.sh; else script=build/native.sh; fi
           docker run --rm -v "$PWD:/work" -w /work quay.io/pypa/manylinux2014_x86_64:latest bash "$script"
+          sudo chown -R "$(id -u):$(id -g)" recorder/native recorder/runtime dist
       - name: Normalize MGU ELF loader and verify target filesystem
         run: |
           python3 build/retarget_elf.py
