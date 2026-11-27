@@ -36,6 +36,11 @@ def build_app(p,d,version,native):
  for name in ['main.js','online-host.js']:files['src/'+name]=(p/'ui'/name).read_bytes()
  files['mgu-app.json']=json.dumps({'schema':1,'id':'owner_dvr','version':version,'tree':tree.rstrip('/'),'modules':['src/main.js','src/online-host.js'],'sdk':['oap-sdk/src/core/OnlineApp.js','oap-sdk/src/logging/logging']},indent=2).encode()
  out=d/f'owner_dvr@{version}.tgz'
+ if out.exists():
+  with tarfile.open(out) as t:
+   assert set(t.getnames())==set(files),'Bump APP when changing application resources'
+   for name,data in files.items():assert t.extractfile(name).read()==data,('Bump APP when changing application resources',name)
+  return out
  with out.open('wb') as raw,gzip.GzipFile(filename='',mode='wb',fileobj=raw,mtime=0) as z,tarfile.open(fileobj=z,mode='w') as t:
   for name,data in files.items():
    m=tarfile.TarInfo(name);m.size=len(data);m.mode=0o644;t.addfile(m,io.BytesIO(data))

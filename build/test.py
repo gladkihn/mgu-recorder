@@ -14,7 +14,7 @@ def run(args, label):
     print('PASS ' + label, flush=True)
 
 with tempfile.TemporaryDirectory() as tmp:
-    for name in ['pixel-ops', 'nv-weave']:
+    for name in ['pixel-ops', 'nv-weave', 'nv-shared']:
         binary = Path(tmp) / (name + ('.exe' if os.name == 'nt' else ''))
         run(shlex.split(os.environ.get('CC', 'cc')) + ['-O2', '-o', str(binary), str(R / 'tests' / (name + '.c'))], name + ' build')
         run([str(binary)], name)

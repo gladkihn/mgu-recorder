@@ -40,6 +40,8 @@ jobs:
       - name: Verify codec
         run: |
           python3 build/verify_runtime.py
+      - name: Verify native NV shared memory and flow control
+        run: sudo python3 build/verify_nv.py
       - name: Build Store artifacts
         run: |
           python3 build/release.py

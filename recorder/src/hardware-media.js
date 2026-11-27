@@ -13,7 +13,15 @@ class HardwareMedia extends EventEmitter{
  feedLive(r){if(!this.liveMode||this.paused||this.now()<this.retryAt)return;if(this.liveNeedsKey&&r.keyframe===false)return;if(!this.livePending)this.livePending=[];if(this.livePending.length>=64){this.livePending=[];this.liveNeedsKey=true;if(r.keyframe===false)return;}this.liveNeedsKey=false;this.livePending.push(r);this.pumpLive();}
  pumpLive(){if(this.livePumping||!this.liveMode||this.paused)return;const token=this.token;this.livePumping=true;(async()=>{while(this.token===token&&this.liveMode&&!this.paused&&this.livePending&&this.livePending.length&&this.records.size<8){const r=this.livePending.shift(),show=!Array.from(this.records.values()).some(v=>v.show)&&this.livePending.length===0;await this.write(r,token,show);}})().catch(e=>{if(this.token===token)this.failed(e);}).then(()=>{this.livePumping=false;if(this.token===token&&this.livePending&&this.livePending.length&&this.records.size<8)this.pumpLive();});}
 
- async pause(){if(!this.decoder){if(this.state.mode==='paused')return this.start(this.state.wall,this.liveMode);return;}if(this.paused){this.pauseShift+=this.now()-this.pauseAt;this.paused=false;this.decoder.kill('SIGCONT');}else{this.pauseAt=this.now();this.paused=true;this.decoder.kill('SIGSTOP');}this.state.mode=this.paused?'paused':this.liveMode?'live':'playing';this.emit('change');}
+ async pause(){
+  if(!this.decoder){
+   if(this.liveMode){this.paused=!this.paused;this.pauseAt=this.now();this.livePending=[];this.liveNeedsKey=true;this.state.mode=this.paused?'paused':'live';this.emit('change');return;}
+   if(this.state.mode==='paused')return this.start(this.state.wall,this.liveMode);return;
+  }
+  if(this.paused){this.pauseShift+=this.now()-this.pauseAt;this.paused=false;if(this.liveMode){this.livePending=[];this.liveNeedsKey=true;}this.decoder.kill('SIGCONT');}
+  else{this.pauseAt=this.now();this.paused=true;this.decoder.kill('SIGSTOP');}
+  this.state.mode=this.paused?'paused':this.liveMode?'live':'playing';this.emit('change');
+ }
  async killDecoder(){const c=this.decoder;this.decoder=null;if(!c)return;if(c.exitCode!==null&&c.exitCode!==undefined||c.signalCode)return;await new Promise(resolve=>{let done=false;const finish=()=>{if(done)return;done=true;clearTimeout(timer);resolve();};const timer=setTimeout(()=>{try{c.kill('SIGKILL');}catch(e){}finish();},1200);c.once('close',finish);try{c.kill('SIGCONT');c.stdin.end();}catch(e){try{c.kill('SIGKILL');}catch(x){}finish();}});}
 
  stop(){const p=this.operation.then(()=>this.stopNow());this.operation=p.catch(()=>{});return p;}
